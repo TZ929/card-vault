@@ -14,6 +14,7 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   listings  Listing[]
+  cards     Card[]   @relation("UserCards")
 }
 
 model Listing {
@@ -25,6 +26,55 @@ model Listing {
   status    ListingStatus  @default(DRAFT)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+}
+
+model Card {
+  id          String   @id @default(uuid())
+  title       String
+  year        Int
+  player      String
+  team        String
+  grade       String?
+  imageUrl    String?
+  owner   User?   @relation("UserCards", fields: [ownerId], references: [id])
+  ownerId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Auction {
+  id String @id @default(uuid())
+  // TODO: Add fields later
+}
+
+model Order {
+  id String @id @default(uuid())
+  // TODO: Add fields later
+}
+
+model Payout {
+  id String @id @default(uuid())
+  // TODO: Add fields later
+}
+
+model Shipment {
+  id String @id @default(uuid())
+  // TODO: Add fields later
+}
+
+model Dispute {
+  id String @id @default(uuid())
+  // TODO: Add fields later
+}
+
+model VaultLocation {
+  id String @id @default(uuid())
+  // TODO: Add fields later
+}
+
+model BreakerPartner {
+  id String @id @default(uuid())
+  // TODO: Add fields later
 }
 
 enum Role {
