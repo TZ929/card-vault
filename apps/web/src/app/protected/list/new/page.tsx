@@ -10,28 +10,22 @@ import { v4 as uuid } from 'uuid'
 import { useAuth } from '@clerk/nextjs'
 
 /* ---------- types & validation --------- */
-
 const step1Schema = z.object({
   cardTitle: z.string().min(2, 'Enter at least 2 characters'),
 })
-
 const step2Schema = z.object({
   price: z.number().positive(),
   auctionType: z.enum(['FIXED', 'AUCTION']),
 })
-
 const step3Schema = z.object({
   fulfillment: z.enum(['SHIP', 'VAULT']),
 })
-
 const completeSchema = step1Schema.merge(step2Schema).merge(step3Schema)
 
 /* ---------- fetch helper ---------- */
-
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 /* ---------- component ---------- */
-
 export default function ListingWizard() {
   const { userId } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
@@ -81,7 +75,7 @@ export default function ListingWizard() {
       return
     }
 
-    // 1) get S3 presigned fields from NestJS
+    // 1) get S3 presigned fields
     const presigned = await fetch('/api/upload', {
       method: 'POST',
       body: JSON.stringify({
@@ -90,34 +84,58 @@ export default function ListingWizard() {
       }),
     }).then(r => r.json())
 
-    // 2) upload original
+    // 2) upload file to S3
     const formData = new FormData()
     Object.entries(presigned.fields).forEach(([k, v]) => formData.append(k, v as string))
     formData.append('file', compressedFile)
-    await fetch(presigned.url, { method: 'POST', body: formData })
+    const s3res = await fetch(presigned.url, { method: 'POST', body: formData })
 
-    alert('Listing draft created!\n\n' + JSON.stringify({ userId, ...data }, null, 2))
-    // TODO: call your NestJS listing POST endpoint here
+    if (!s3res.ok) {
+      alert(`Upload failed: ${s3res.status}`)
+      return
+    }
+
+    // 3) show what was submitted
+    alert(
+      'Listing draft created!\n\n' +
+        JSON.stringify({ userId, ...data }, null, 2)
+    )
+    // TODO: POST to your NestJS listing endpoint here
   }
 
   /* ---------- render ---------- */
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-lg mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold mb-6">Create Listing (step {step}/4)</h1>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="max-w-lg mx-auto p-6 space-y-6"
+    >
+      <h1 className="text-2xl font-bold">Create Listing (step {step}/4)</h1>
 
       {step === 1 && (
         <>
           <label className="block">
             Card title / player
-            <input {...register('cardTitle')} className="input" />
+            <input
+              {...register('cardTitle')}
+              className="input"
+              placeholder="e.g. Josh Giddey Rookie"
+            />
           </label>
-          {errors.cardTitle && <p className="text-red-500">{errors.cardTitle.message}</p>}
+          {errors.cardTitle && (
+            <p className="text-red-500">{errors.cardTitle.message}</p>
+          )}
           {suggestions?.map((s: any) => (
             <button
-              type="button"
               key={s.id}
-              className="block text-left hover:bg-gray-100 px-2"
-              onClick={() => (document.querySelector<HTMLInputElement>('input[name="cardTitle"]')!.value = s.name)}
+              type="button"
+              className="btn mb-2 w-full text-left"
+              onClick={() =>
+                (
+                  document.querySelector<HTMLInputElement>(
+                    'input[name="cardTitle"]'
+                  )!
+                ).value = s.name
+              }
             >
               {s.name}
             </button>
@@ -129,7 +147,12 @@ export default function ListingWizard() {
         <>
           <label className="block">
             Price $
-            <input type="number" step="0.01" {...register('price', { valueAsNumber: true })} className="input" />
+            <input
+              type="number"
+              step="0.01"
+              {...register('price', { valueAsNumber: true })}
+              className="input"
+            />
           </label>
           <select {...register('auctionType')} className="input">
             <option value="FIXED">Fixed Price</option>
@@ -140,12 +163,12 @@ export default function ListingWizard() {
 
       {step === 3 && (
         <>
-          <label className="block">Fulfillment type</label>
+          <p className="block font-medium">Fulfillment type</p>
           <label className="inline-flex items-center space-x-2">
             <input type="radio" value="SHIP" {...register('fulfillment')} />
             <span>Ship to buyer</span>
           </label>
-          <label className="inline-flex items-center space-x-2">
+          <label className="inline-flex items-center space-x-2 ml-6">
             <input type="radio" value="VAULT" {...register('fulfillment')} />
             <span>Store in vault</span>
           </label>
@@ -154,22 +177,31 @@ export default function ListingWizard() {
 
       {step === 4 && (
         <>
-          <input type="file" accept="image/*" onChange={onImageChange} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={onImageChange}
+            className="input"
+          />
           {compressedFile && (
             <p className="text-sm text-gray-600">
-              Ready to upload – {compressedFile.name} ({Math.round(compressedFile.size / 1024)} KB)
+              Ready to upload – {compressedFile.name} (
+              {Math.round(compressedFile.size / 1024)} KB)
             </p>
           )}
         </>
       )}
 
       <div className="flex gap-4">
-        {step < 4 && (
-          <button type="button" onClick={next} className="btn">
+        {step < 4 ? (
+          <button
+            type="button"
+            onClick={next}
+            className="btn"
+          >
             Next
           </button>
-        )}
-        {step === 4 && (
+        ) : (
           <button type="submit" className="btn-primary">
             Submit
           </button>
