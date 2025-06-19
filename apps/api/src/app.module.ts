@@ -12,7 +12,7 @@ import { UploadController } from './s3/upload.controller';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,      // makes process.env.* available everywhere
-      envFilePath: '.env',  // adjust if your file is named differently or in another folder
+      envFilePath: '../../.env',  // adjust if your file is named differently or in another folder
     }),
   ],
   controllers: [

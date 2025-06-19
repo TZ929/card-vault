@@ -30,6 +30,7 @@ export default function ListingWizard() {
   const { userId } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [compressedFile, setCompressedFile] = useState<File | null>(null)
+  const [thumbFile, setThumbFile] = useState<File | null>(null)
   const {
     register,
     handleSubmit,
@@ -65,9 +66,23 @@ export default function ListingWizard() {
   async function onImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const comp = await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1600 })
-    setCompressedFile(comp)
+
+    // 1) original (<= 2 MB, keep dims up to 1600 px)
+    const original = await imageCompression(file, {
+      maxSizeMB: 2,
+      maxWidthOrHeight: 1600,
+    })
+
+    // 2) 800-px thumbnail (<= 1 MB)
+    const thumb = await imageCompression(file, {
+      maxWidthOrHeight: 800,
+      maxSizeMB: 1,
+    })
+
+    setCompressedFile(original)
+    setThumbFile(thumb)          // you added this new piece of state earlier
   }
+
 
   async function onSubmit(data: z.infer<typeof completeSchema>) {
     if (!compressedFile) {
@@ -78,22 +93,23 @@ export default function ListingWizard() {
     // 1) get S3 presigned fields
     const presigned = await fetch('/api/upload', {
       method: 'POST',
-      body: JSON.stringify({
-        filename: uuid() + '.jpg',
-        contentType: compressedFile.type,
-      }),
+      body: JSON.stringify([
+        { filename: uuid() + '.jpg',        contentType: compressedFile.type },
+        { filename: uuid() + '_thumb.jpg',  contentType:  thumbFile.type    },
+      ]),
     }).then(r => r.json())
 
     // 2) upload file to S3
-    const formData = new FormData()
-    Object.entries(presigned.fields).forEach(([k, v]) => formData.append(k, v as string))
-    formData.append('file', compressedFile)
-    const s3res = await fetch(presigned.url, { method: 'POST', body: formData })
-
-    if (!s3res.ok) {
-      alert(`Upload failed: ${s3res.status}`)
-      return
-    }
+    await Promise.all(
+      [compressedFile, thumbFile].map((file, idx) => {
+        const fd = new FormData()
+        Object.entries(presigned[idx].fields).forEach(([k, v]) =>
+          fd.append(k, v as string),
+        )
+        fd.append('file', file)
+        return fetch(presigned[idx].url, { method: 'POST', body: fd })
+      }),
+    )
 
     // 3) show what was submitted
     alert(
