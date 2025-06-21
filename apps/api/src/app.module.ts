@@ -6,6 +6,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UploadController } from './s3/upload.controller';
+import { ListingModule } from './listing/listing.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   // load .env (AWS_REGION, AWS_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, etc)
@@ -14,6 +16,8 @@ import { UploadController } from './s3/upload.controller';
       isGlobal: true,      // makes process.env.* available everywhere
       envFilePath: '../../.env',  // adjust if your file is named differently or in another folder
     }),
+    ListingModule,
+    PrismaModule,
   ],
   controllers: [
     AppController,
