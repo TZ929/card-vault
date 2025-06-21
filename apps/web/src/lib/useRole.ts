@@ -1,6 +1,12 @@
 import { useUser } from '@clerk/nextjs'
-export const useRole = () => useUser().user?.publicMetadata.role as
-  | 'BUYER'
-  | 'SELLER'
-  | 'PARTNER'
-  | 'ADMIN'
+import { Role } from 'db'
+
+export function useRole(role: Role) {
+  const { user } = useUser()
+
+  if (!user) {
+    return false
+  }
+
+  return user.publicMetadata?.role === role
+}

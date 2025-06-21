@@ -1,6 +1,8 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { ListingService } from './listing.service';
 import { Request } from 'express';
+import { Roles } from 'src/auth/roles.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
 
 // Basic DTO for validation - we can enhance this later
 export class CreateListingDto {
@@ -21,6 +23,8 @@ export class ListingController {
   constructor(private readonly listingService: ListingService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('SELLER')
   create(@Body() createListingDto: CreateListingDto, @Req() req: Request) {
     // In a real app, you'd get the userId from a proper auth guard/decorator
     const sellerId = req.headers['authorization']?.split(' ')[1];

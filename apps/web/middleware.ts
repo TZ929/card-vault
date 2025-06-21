@@ -1,19 +1,23 @@
 // apps/web/middleware.ts
-import { clerkMiddleware } from '@clerk/nextjs/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-export default clerkMiddleware({
-  publicRoutes: [
-    '/',           // always public
-    '/sign-in*',   // Clerk sign-in widget
-    '/sign-up*',   // Clerk sign-up widget
-    '/_next/*',    // Next.js internals
-    '/favicon.ico' // favicon
-  ]
+const isPublicRoute = createRouteMatcher([
+  '/',                // Home page
+  '/sign-in(.*)',     // Sign-in and related routes
+  '/sign-up(.*)',     // Sign-up and related routes
+  '/api/scard(.*)',   // Public API for card search
+  '/_next/(.*)',      // Next.js internals
+  '/favicon.ico',     // Favicon
+])
+
+export default clerkMiddleware((auth, req) => {
+  if (!isPublicRoute(req)) {
+    auth().protect() // Protect all routes that are not public
+  }
 })
 
 export const config = {
-  matcher: [
-    '/protected/:path*',  // only signed-in users can reach /protected/...
-    '/admin/:path*'       // only signed-in users can reach /admin/...
-  ]
+  // The following matcher runs middleware on all routes
+  // except static assets.
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
 }
