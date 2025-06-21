@@ -8,73 +8,22 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  role      Role
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  role      Role     @default(BUYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards     Card[]
   listings  Listing[]
-  cards     Card[]   @relation("UserCards")
-}
-
-model Listing {
-  id        String         @id @default(uuid())
-  title     String
-  price     Decimal
-  seller    User           @relation(fields: [sellerId], references: [id])
-  sellerId  String
-  status    ListingStatus  @default(DRAFT)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-}
-
-model Card {
-  id          String   @id @default(uuid())
-  title       String
-  year        Int
-  player      String
-  team        String
-  grade       String?
-  imageUrl    String?
-  owner   User?   @relation("UserCards", fields: [ownerId], references: [id])
-  ownerId     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Auction {
-  id String @id @default(uuid())
-  // TODO: Add fields later
-}
-
-model Order {
-  id String @id @default(uuid())
-  // TODO: Add fields later
-}
-
-model Payout {
-  id String @id @default(uuid())
-  // TODO: Add fields later
-}
-
-model Shipment {
-  id String @id @default(uuid())
-  // TODO: Add fields later
-}
-
-model Dispute {
-  id String @id @default(uuid())
-  // TODO: Add fields later
-}
-
-model VaultLocation {
-  id String @id @default(uuid())
-  // TODO: Add fields later
-}
-
-model BreakerPartner {
-  id String @id @default(uuid())
-  // TODO: Add fields later
+  bids      Bid[]
+  orders    Order[]
+  payouts   Payout[]
+  shipments Shipment[]
 }
 
 enum Role {
@@ -84,10 +33,131 @@ enum Role {
   ADMIN
 }
 
+model Card {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  name      String
+  year      Int
+  player    String
+  grade     String?
+  serial    String?
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listings Listing[]
+}
+
+enum ListingType {
+  FIXED_PRICE
+  AUCTION
+}
+
 enum ListingStatus {
   DRAFT
   ACTIVE
   SOLD
+  ENDED
   CANCELLED
+}
+
+model Listing {
+  id          String        @id @default(cuid())
+  cardId      String
+  card        Card          @relation(fields: [cardId], references: [id])
+  sellerId    String
+  seller      User          @relation(fields: [sellerId], references: [id])
+  type        ListingType
+  status      ListingStatus @default(DRAFT)
+  price       Float
+  startingBid Float?
+  buyNowPrice Float?
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  bids Bid[]
+}
+
+model Bid {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  bidderId  String
+  bidder    User     @relation(fields: [bidderId], references: [id])
+  amount    Float
+  createdAt DateTime @default(now())
+
+  @@unique([listingId, bidderId, amount])
+}
+
+model Auction {
+  id          String   @id @default(cuid())
+  listingId   String   @unique
+  highestBid  Float?
+  winnerId    String?
+  endingAt    DateTime
+  ended       Boolean  @default(false)
+  antiSnipe   Boolean  @default(true)
+  nextCheckAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  buyerId         String
+  buyer           User     @relation(fields: [buyerId], references: [id])
+  listingId       String   @unique
+  amount          Float
+  stripeChargeId  String   @unique
+  status          String // e.g., pending, paid, shipped, delivered, disputed
+  shippingAddress String
+  trackingNumber  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  shipment Shipment?
+}
+
+model Payout {
+  id             String   @id @default(cuid())
+  sellerId       String
+  seller         User     @relation(fields: [sellerId], references: [id])
+  orderId        String   @unique
+  amount         Float
+  stripeTransferId String   @unique
+  status         String // e.g., pending, paid, failed
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Shipment {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id])
+  shipperId      String
+  shipper        User     @relation(fields: [shipperId], references: [id])
+  trackingNumber String
+  status         String // e.g., preparing, in_transit, delivered
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Dispute {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  reason      String
+  status      String // e.g., open, under_review, resolved
+  resolution  String?
+  openedById  String
+  resolvedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 

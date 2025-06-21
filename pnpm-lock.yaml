@@ -237,7 +237,15 @@ importers:
         specifier: ^5
         version: 5.8.2
 
-  packages/db: {}
+  packages/db:
+    dependencies:
+      '@prisma/client':
+        specifier: ^6.9.0
+        version: 6.9.0(prisma@6.9.0(typescript@5.8.3))(typescript@5.8.3)
+    devDependencies:
+      prisma:
+        specifier: ^6.9.0
+        version: 6.9.0(typescript@5.8.3)
 
 packages:
 
